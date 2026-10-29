@@ -25,7 +25,7 @@ export default class ApplicationState extends EventEmitter {
     set(key, value) {
         if(this._state[key] == value) return false;
 
-        //console.log("changed", key, value)
+        logger.debug("state changed", key, value)
 
         this._state[key] = value;
         this.emit(`change:${key}`, value);

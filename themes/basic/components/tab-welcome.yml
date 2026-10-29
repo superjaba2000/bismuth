@@ -1,0 +1,24 @@
+tab0-logo-box:
+  top: 2
+  left: 0
+  width: "100%"
+  height: "100%"
+  align: "center"
+  style:
+    fg: "colors:welcome-logo"
+tab0-separator:
+  left: 3
+  width: "100%-6"
+  height: 1
+  align: "center"
+  style:
+    fg: "colors:neutral-gray"
+tab0-hotkeys-box:
+  left: 6
+  width: "100%-11"
+  content: "Press Tab to continue..."
+  align: "center"
+  valign: "middle"
+  style:
+    fg: "colors:primary-fg"
+    blink: true

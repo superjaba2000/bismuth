@@ -1,95 +1,118 @@
+import { execFile } from 'node:child_process';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import logger from '../util/logger.js';
-import ffmpeg from 'fluent-ffmpeg';
 
-// audio info & metadata explorer
+const execFileAsync = promisify(execFile);
+
+function findTag(name, ...tagSets) {
+    for (const tags of tagSets) {
+        if (!tags) {
+            continue;
+        }
+
+        for (const [key, value] of Object.entries(tags)) {
+            if (key.toLowerCase() === name && value) {
+                return value;
+            }
+        }
+    }
+    return null;
+}
+
 export default class AudioExplorer {
     ffprobePath = null;
 
     async init() {
-        this.ffprobePath = await this.getFfprobePath();
-
-        ffmpeg.setFfprobePath(this.ffprobePath);
-
-        logger.info(`AudioExplorer initialized. FFprobe path: ${this.ffprobePath}`);
-    }
-
-    async getFfprobePath() {
-        try {
-            return await this.findSystemFfprobePath();
-        } catch {
-            try {
-                return await this.getBundledFfprobePath();
-            } catch {
-                throw new Error('Failed to find the system-installed embedded ffprobe binary file!');
-            }
-        }
-    }
-
-    async getBundledFfprobePath() {
-        const { path } = await import('ffprobe-static');
-
-        if (!path) {
-            throw new Error('Bundled ffprobe not found. Pleasy install ffprobe-static.');
+        if (this.ffprobePath) {
+            return this.ffprobePath;
         }
 
-        const tmpDir = join(tmpdir(), 'bismuth');
-        const targetPath = join(tmpDir, 'ffprobe' + (process.platform === 'win32' ? '.exe' : ''));
-
-        if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
-
-        if (!existsSync(targetPath)) {
-            copyFileSync(path, targetPath);
-            logger.info(`Bundled ffprobe copied to temp dir: ${targetPath}`);
-        }
-
-        if (process.platform !== 'win32') {
-            chmodSync(targetPath, 0o755);
-        }
-
-        logger.info(`Using bundled ffprobe: ${targetPath}`);
-
-        return targetPath;
+        this.ffprobePath = process.env.FFPROBE_PATH || await this.findSystemFfprobePath();
+        logger.info(`AudioExplorer initialized with ffprobe at ${this.ffprobePath}`);
+        return this.ffprobePath;
     }
 
     async findSystemFfprobePath() {
-        const finderCMD = process.platform === 'win32'
-            ? 'where'
-            : 'which';
+        const finderCommand = process.platform === 'win32' ? 'where' : 'which';
+        const candidates = [];
+
+        if (process.env.FFMPEG_PATH) {
+            const siblingName = process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe';
+            candidates.push(path.join(path.dirname(process.env.FFMPEG_PATH), siblingName));
+        }
 
         try {
-            const { stdout } = await execFileAsync(finderCMD, ['ffprobe']);
-            const ffmpegPath = stdout.trim().split(/\r?\n/)[0];
+            const { stdout } = await execFileAsync(finderCommand, ['ffprobe']);
+            candidates.push(...stdout.trim().split(/\r?\n/));
+        } catch (error) {
+            logger.debug(`Could not locate ffprobe in PATH: ${error.message}`);
+        }
 
-            if (!ffmpegPath) {
-                throw new Error('FFprobe path is empty');
+        for (const candidate of candidates) {
+            if (!candidate) {
+                continue;
             }
 
-            return ffmpegPath;
-        } catch {
-            throw new Error('System FFprobe not found. Install FFprobe and add it to PATH.');
+            try {
+                await execFileAsync(candidate, ['-version']);
+                return candidate;
+            } catch (error) {
+                logger.debug(`ffprobe candidate "${candidate}" is not usable: ${error.message}`);
+            }
         }
+
+        throw new Error('ffprobe was not found. Install FFmpeg (including ffprobe) or set FFPROBE_PATH.');
     }
 
-    async getInfo(path) {
+    async getInfo(filePath) {
         if (!this.ffprobePath) {
-            throw new Error('AudioExplorer is not initialized!');
+            throw new Error('AudioExplorer is not initialized');
         }
 
-        return new Promise((resolve, reject) => {
-            ffmpeg.ffprobe(path, (err, metadata) => {
-                if (err) throw err;
-
-                // console.log('Формат:', metadata.format.format_name);
-                // console.log('Длительность (сек):', metadata.format.duration);
-                // console.log('Теги (метаданные):', metadata.format.tags); // Артист, Альбом и т.д.
-
-                // const audioStream = metadata.streams.find(s => s.codec_type === 'audio');
-                // if (audioStream) {
-                //     console.log('Кодек:', audioStream.codec_name);
-                //     console.log('Каналы:', audioStream.channels); // 2 для стерео
-                //     console.log('Частота (Гц):', audioStream.sample_rate); // например, 44100
-                // }
+        let stdout;
+        try {
+            ({ stdout } = await execFileAsync(
+                this.ffprobePath,
+                ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', filePath],
+                { maxBuffer: 8 * 1024 * 1024, windowsHide: true }
+            ));
+        } catch (error) {
+            throw new Error(`ffprobe could not read "${filePath}": ${error.stderr?.trim() || error.message}`, {
+                cause: error
             });
-        });
+        }
+
+        let probe;
+        try {
+            probe = JSON.parse(stdout);
+        } catch (error) {
+            throw new Error(`ffprobe returned invalid metadata for "${filePath}"`, { cause: error });
+        }
+
+        const audioStream = probe.streams?.find(stream => stream.codec_type === 'audio');
+        if (!audioStream) {
+            throw new Error(`"${filePath}" does not contain an audio stream`);
+        }
+
+        const format = probe.format ?? {};
+        const title = findTag('title', format.tags, audioStream.tags)
+            || path.basename(filePath, path.extname(filePath));
+        let artist = findTag('artist', format.tags, audioStream.tags) || 'Unknown';
+        let displayTitle = title;
+
+        if (artist === 'Unknown' && displayTitle.includes(' - ')) {
+            [artist, displayTitle] = displayTitle.replace(/\[.*?\]/g, '').trim().split(' - ', 2);
+        }
+
+        const duration = Number(format.duration ?? audioStream.duration);
+        return {
+            title: displayTitle,
+            artist,
+            duration: Number.isFinite(duration) && duration > 0 ? duration : null,
+            format: format.format_name ?? null,
+            sampleRate: Number(audioStream.sample_rate) || null,
+            channels: Number(audioStream.channels) || null
+        };
     }
 }

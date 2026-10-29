@@ -32,21 +32,26 @@
 
 ## Аудио модули (src/audio/)
 
-### audio_system.js
+### AudioSystem.js
 **Основная аудио система**
 - Управление Web Audio API контекстом
 - Загрузка и воспроизведение треков
 - Управление громкостью и позицией
 
-### audio_info.js
+### AudioExplorer.js
 **Получение информации о треке**
-- Парсинг метаданных с помощью music-metadata
+- Получение метаданных через ffprobe
 - Извлечение title, artist, duration
 
-### decoder.js
+### AudioDecoder.js
 **Декодирование аудио**
 - Использует FFmpeg для конвертации в PCM
 - Создает AudioBuffer для Web Audio API
+
+### AudioLoader.js
+**Загрузка трека**
+- Проверяет выбранный файл
+- Получает метаданные и декодирует аудио через AudioExplorer и AudioDecoder
 
 ## UI компоненты (src/ui/)
 

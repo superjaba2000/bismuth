@@ -1,15 +1,16 @@
 /node_modules
 
-/logs
-/bismuth-logs
-/src/bismuth-logs
+docs/
+logs/
+bismuth-logs/
+src/bismuth-logs/
 
-/src/filemanager.js
+src/filemanager.js
 
-/refactor
+refactor/
 
-/audio
-/dist
+audio/
+dist/
 
 *.sh
 *.bat

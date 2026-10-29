@@ -3,13 +3,15 @@ import blessed from "reblessed";
 import logger from "../util/logger.js";
 import ConfigManager from "./ConfigManager.js";
 import ApplicationState from "./ApplicationState.js";
+import KeybindsManager from "./KeybindsManager.js";
 import UIManager from "../ui/UIManager.js";
 import AudioSystem from "../audio/AudioSystem.js";
-import { initKeybindings } from "../util/keybindings.js";
+
 
 export default class Application extends EventEmitter {
     config = new ConfigManager();
     state = new ApplicationState();
+    binds = new KeybindsManager();
     as = new AudioSystem();
     ui = new UIManager();
 
@@ -31,12 +33,33 @@ export default class Application extends EventEmitter {
 
         this.config.readConfig();
         this.state.init();
+        this.binds.init();
+        this.as.init();
         this.ui.init();
         this.ui.appendToScreen();
 
-        initKeybindings();
+        this.on('ui:play-pause', () => this.runAudioCommand(() => this.as.playPause()));
+        this.on('ui:next-track', () => this.runAudioCommand(() => this.as.nextTrack()));
+        this.on('ui:previous-track', () => this.runAudioCommand(() => this.as.previousTrack()));
+        this.on('ui:change-repeat-type', () => this.runAudioCommand(() => this.as.changeRepeatType()));
+
+        for (const key of ['current-track', 'current-position', 'playback-state']) {
+            this.state.on(`change:${key}`, () => {
+                this.ui.playerBox.update();
+                this.ui.render();
+            });
+        }
 
         logger.info('Application.init() finished');
+    }
+
+    runAudioCommand(command) {
+        try {
+            command();
+        } catch (error) {
+            logger.error('Audio command failed:', error);
+            this.ui.messageBox.display(`Audio playback failed: ${error.message}`, 5);
+        }
     }
 
     fire(eventName, ...args) {

@@ -1,6 +1,7 @@
 import blessed from 'reblessed';
 import logger from '../../util/logger.js';
 import { clamp, screenSize } from '../../util/util.js';
+import { app, state } from '../../app.js';
 import UITab from './UITab.js';
 
 // old old code
@@ -30,13 +31,23 @@ export default class FilesTab extends UITab {
 
         const fileManager = blessed.filemanager(styles['tab1-filemanager']);
 
-        fileManager.on('file', async path => {
+        app.as.on('track-changed', () => this.updatePlaylist());
+        app.as.on('output-error', error => {
+            this.emit('message', `Audio output failed: ${error.message}`, 5);
+        });
+        this.updatePlaylist();
+
+        fileManager.on('file', async filePath => {
             this.emit('message', 'Loading file...', 0);
-            
-            // process track with audio system
-            // const track = new Track(file_path);
-            // await track.load();
-            // load_and_play_track(track);
+
+            try {
+                const track = await app.as.loadAndPlayFile(filePath);
+                this.updatePlaylist();
+                this.emit('message', `Playing: ${track.title}`, 2);
+            } catch (error) {
+                logger.error(`Failed to play selected file "${filePath}":`, error);
+                this.emit('message', `Could not play file: ${error.message}`, 5);
+            }
         });
 
         fileManager.refresh(process.cwd(), () => {
@@ -51,6 +62,21 @@ export default class FilesTab extends UITab {
         this.addChild('filemanager', fileManager);
 
         logger.debug('[FilesTab] initialized');
+    }
+
+    updatePlaylist() {
+        const playlist = this.children['playlist'];
+        if (!playlist) {
+            return;
+        }
+
+        const tracks = state.get('current-playlist')?.tracks ?? [];
+        const currentTrack = state.get('current-track');
+        playlist.clearItems();
+        for (const track of tracks) {
+            const marker = track === currentTrack ? '> ' : '  ';
+            playlist.add(`${marker}${track.title} - ${track.artist}`);
+        }
     }
 
     appendTo(screen) {

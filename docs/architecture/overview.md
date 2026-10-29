@@ -43,6 +43,6 @@ Bismuth построен на модульной архитектуре с ра�
 
 - **reblessed**: терминальный UI
 - **@descript/web-audio-js**: аудио контекст
-- **fluent-ffmpeg**: обертка FFmpeg
+- **ffmpeg / ffmpeg-static**: декодирование аудио в PCM
+- **ffprobe**: извлечение тегов и длительности аудиофайла
 - **speaker**: вывод аудио
-- **music-metadata**: чтение метаданных

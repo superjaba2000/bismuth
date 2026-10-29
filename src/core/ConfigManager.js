@@ -7,8 +7,14 @@ import YAML from 'yaml';
 const APP_NAME = 'bismuth/';
 const CONFIG_FILE_NAME = 'config.yml';
 const BASE_CONFIG = {
-    "theme": "old",
+    "theme": "basic",
     "show-welcome-screen": true,
+    "binds": {
+        "change-tab": ["tab"],
+        "play-pause": ["space"],
+        "next-track": ["right"],
+        "previous-track": ["left"],
+    }
 };
 
 export default class ConfigManager {
@@ -19,7 +25,7 @@ export default class ConfigManager {
     }
 
     get(key) {
-        return this.config[key];
+        return key.split('.').reduce((value, part) => value?.[part], this.config);
     }
 
     set(key, value) {
@@ -51,12 +57,12 @@ export default class ConfigManager {
     }
 
     createConfigDir() {
-        if(!fs.existsSync(this.configDir)) {
+        if (!fs.existsSync(this.configDir)) {
             fs.mkdirSync(this.configDir, { recursive: true });
             logger.info(`Created config directory at ${this.configDir}`);
         }
 
-        if(!fs.existsSync(this.configFilePath)) {
+        if (!fs.existsSync(this.configFilePath)) {
             fs.writeFileSync(this.configFilePath, "", 'utf8');
             this.writeConfig();
             logger.info(`Created config file at ${this.configFilePath}`);
@@ -76,7 +82,14 @@ export default class ConfigManager {
             logger.error(`Error parsing config file: ${error.message}`);
         }
 
-        this.config = { ...BASE_CONFIG, ...parsedConfig };
+        this.config = {
+            ...BASE_CONFIG,
+            ...parsedConfig,
+            binds: {
+                ...BASE_CONFIG.binds,
+                ...parsedConfig?.binds
+            }
+        };
     }
 
     writeConfig() {

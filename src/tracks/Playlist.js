@@ -23,7 +23,9 @@ export default class Playlist {
     }
 
     get next_position() {
-        return (this.current_position + 1) % this._tracks.length;
+        return this._tracks.length === 0
+            ? 0
+            : (this.current_position + 1) % this._tracks.length;
     }
 
     get next_track() {
@@ -38,36 +40,54 @@ export default class Playlist {
         this.current_position = this.next_position;
     }
 
-    shuffle_tracks() {
-        // slice() used to clone the array
+    shuffle_tracks(currentTrack = this.current_track) {
         this.shuffled_tracks = this.tracks.slice();
 
-        for (let i = this.shuffle_tracks.length - 1; i > 0; i--) {
+        for (let i = this.shuffled_tracks.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
 
-            [this.shuffle_tracks[i], this.shuffle_tracks[j]] = [this.shuffle_tracks[j], this.shuffle_tracks[i]];
+            [this.shuffled_tracks[i], this.shuffled_tracks[j]] =
+                [this.shuffled_tracks[j], this.shuffled_tracks[i]];
         }
+
+        const currentIndex = this.shuffled_tracks.indexOf(currentTrack);
+        if (currentIndex > 0) {
+            [this.shuffled_tracks[0], this.shuffled_tracks[currentIndex]] =
+                [this.shuffled_tracks[currentIndex], this.shuffled_tracks[0]];
+        }
+        this.current_position = 0;
 
         return this;
     }
 
     add(track) {
         this.tracks.push(track);
-
-        /* TODO: add track to shuffle_tracks */
+        if (this.shuffle) {
+            this.shuffled_tracks.push(track);
+        }
 
         return this;
     }
 
     remove_index(index) {
-        this.tracks.splice(index, 1);
+        if (index < 0 || index >= this.tracks.length) {
+            return this;
+        }
+
+        const [removedTrack] = this.tracks.splice(index, 1);
+        this.shuffled_tracks = this.shuffled_tracks.filter(track => track !== removedTrack);
+        if (this.current_position >= this._tracks.length) {
+            this.current_position = Math.max(0, this._tracks.length - 1);
+        }
 
         return this;
     }
 
     remove(track) {
         const index = this.tracks.indexOf(track);
-
+        if (index < 0) {
+            return this;
+        }
         return this.remove_index(index);
     }
 }

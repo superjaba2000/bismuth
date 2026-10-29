@@ -32,7 +32,7 @@
             hover: {
                 bg: "gray"
             }
-        }
+        },
     },
 
     "button-prev": {

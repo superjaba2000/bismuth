@@ -2,445 +2,328 @@ import logger from '../util/logger.js';
 import { EventEmitter } from 'node:events';
 import { StreamAudioContext } from '@descript/web-audio-js';
 import Speaker from 'speaker';
-import { state, fire } from '../app.js';
+import path from 'node:path';
+import { state } from '../app.js';
+import AudioLoader from './AudioLoader.js';
+import Track from '../tracks/Track.js';
 
 export default class AudioSystem extends EventEmitter {
     context = null;
     sourceNode = null;
     gainNode = null;
     speaker = null;
+    loader = new AudioLoader();
+    playbackStartTime = 0;
+    playbackOffset = 0;
+    isPlaying = false;
+    currentPosition = 0;
+    positionTimer = null;
 
-    get currentTrack() { return state.get("current-track"); }
-    get currentPlaylist() { return state.get("current-playlist"); }
+    get currentTrack() {
+        return state.get('current-track');
+    }
+
+    get currentPlaylist() {
+        return state.get('current-playlist');
+    }
 
     changeRepeatType() {
-        switch (state.get('repeat-type')) {
-            case 'none':
-                state.set('repeat-type', 'playlist');
-                break;
+        const repeatTypes = ['none', 'playlist', 'track'];
+        const currentIndex = repeatTypes.indexOf(state.get('repeat-type'));
+        state.set('repeat-type', repeatTypes[(currentIndex + 1) % repeatTypes.length]);
+    }
 
-            case 'playlist':
-                state.set('repeat-type', 'track');
-                break;
+    setVolume(volume) {
+        const boundedVolume = Math.max(0, Math.min(1, Number(volume) || 0));
+        state.set('volume', boundedVolume);
+    }
 
-            case 'track':
-                state.set('repeat-type', 'none');
-                break;
+    toggleShuffle() {
+        const enabled = !state.get('shuffle');
+        const playlist = this.currentPlaylist;
+        playlist.shuffle = enabled;
+
+        if (enabled) {
+            playlist.shuffle_tracks(this.currentTrack);
+        } else {
+            playlist.shuffled_tracks = [];
+            const currentIndex = playlist.tracks.indexOf(this.currentTrack);
+            playlist.current_position = Math.max(0, currentIndex);
         }
+
+        state.set('shuffle', enabled);
     }
 
     init() {
-        try {
-            logger.info('started AudioSystem.init()')
-
-            this.context = new StreamAudioContext();
-
-            this.gainNode = this.context.createGain();
-            this.gainNode.connect(this.context.destination);
-
-            this.updateVolume();
-            state.on("change:volume", () => this.updateVolume());
-
-            loffer.info('AudioSystem.init() finished');
-        } catch (error) {
-            this.log('Failed to initialize audio system:', error);
-            throw error;
-        }
-    }
-
-
-    reset() {
-        // Clean up source node.
-        if (this.sourceNode) {
-            try {
-                this.sourceNode.onended = null;
-                this.sourceNode.stop();
-            } catch (error) {
-                logger.error('Error stopping sourceNode:', error);
-            }
-
-            this.sourceNode = null;
-        }
-
-        // Clean up speaker.
-        if (this.speaker) {
-            try {
-                this.speaker.end();
-            } catch (error) {
-                logger.error('Error ending speaker:', error);
-            }
-
-            this.speaker = null;
-        }
-
-        // Clean up audio context.
-        if (
-            this.context &&
-            this.context.state !== 'closed'
-        ) {
-            try {
-                this.context.close().catch(() => { });
-            } catch (error) {
-                logger.error('Error closing audio context:', error);
-            }
-        }
-
-        // Recreate audio context.
-        try {
-            this.context = new StreamAudioContext();
-
-            this.gainNode = this.context.createGain();
-            this.gainNode.connect(this.context.destination);
-
-            this.setVolume(this.volume);
-        } catch (error) {
-            this.log('Failed to recreate audio context:', error);
-            throw error;
-        }
-
-        state.set('playback-state', 'paused');
-        state.set('current-position', 0);
-        this.playbackStartTime = 0;
-        this.playbackOffset = 0;
-    }
-
-
-    createSpeaker() {
-        if (!this.currentTrack?.audioBuffer) {
-            logger.error('Cannot create speaker: no audio buffer available');
+        if (this.context) {
             return;
         }
 
-        // Clean up existing speaker.
-        if (this.speaker) {
-            try {
-                this.speaker.end();
-            } catch (error) {
-                this.log('Error ending speaker:', error);
+        this.context = new StreamAudioContext();
+        this.gainNode = this.context.createGain();
+        this.gainNode.connect(this.context.destination);
+        this.updateVolume();
+        state.on('change:volume', () => this.updateVolume());
+        this.positionTimer = setInterval(() => {
+            if (!this.isPlaying) {
+                return;
             }
 
-            this.speaker = null;
+            const position = this.getCurrentPosition();
+            state.set('current-position', position);
+            if (position >= this.currentTrack.duration) {
+                this.handleTrackEnd();
+            }
+        }, 250);
+        this.positionTimer.unref?.();
+
+        logger.info('Audio system initialized.');
+    }
+
+    async loadAndPlayFile(filePath) {
+        if (typeof filePath !== 'string' || filePath.length === 0) {
+            throw new Error('No file path was selected');
+        }
+        if (!this.context || !this.gainNode) {
+            throw new Error('Audio system is not initialized');
         }
 
-        const channels = this.currentTrack.audioBuffer.numberOfChannels || 2;
-        const sampleRate = this.currentTrack.audioBuffer.sampleRate || 44100;
+        const absolutePath = path.resolve(filePath);
+        let track = this.currentPlaylist.tracks.find(
+            item => path.resolve(item.path) === absolutePath && item.loaded
+        );
+
+        if (!track) {
+            track = await new Track(absolutePath).load(this.loader, this.context);
+            this.currentPlaylist.add(track);
+        }
+
+        this.loadAndPlayTrack(track);
+        return track;
+    }
+
+    loadAndPlayTrack(track) {
+        if (!track?.loaded || !track.audioBuffer) {
+            throw new Error('Selected track has no decoded audio');
+        }
+        if (!this.context || !this.gainNode) {
+            throw new Error('Audio system is not initialized');
+        }
+
+        this.stopSource();
+
+        state.set('current-track', track);
+        state.set('current-position', 0);
+        this.currentPosition = 0;
+        this.emit('track-changed', track);
+        this.playFrom(0);
+    }
+
+    createSpeaker(track) {
+        if (this.speaker) {
+            return;
+        }
 
         try {
             this.speaker = new Speaker({
-                channels: Math.min(channels, 2),
-                sampleRate,
-                bitDepth: 16,
+                channels: Math.min(track.audioBuffer.numberOfChannels || 2, 2),
+                sampleRate: track.audioBuffer.sampleRate || 44100,
+                bitDepth: 16
             });
-
+            this.speaker.on('error', error => {
+                logger.error('Audio output failed:', error);
+                if (this.isPlaying) {
+                    this.currentPosition = this.getCurrentPosition();
+                    this.stopSource();
+                    state.set('current-position', this.currentPosition);
+                    state.set('playback-state', 'paused');
+                }
+                this.emit('output-error', error);
+            });
             this.context.pipe(this.speaker);
-
-            logger.debug(`Speaker created: ${channels}ch, ${sampleRate}Hz`);
         } catch (error) {
-            logger.error('Failed to create speaker:', error);
+            this.speaker = null;
+            logger.error('Failed to initialize audio output:', error);
             throw error;
         }
     }
 
+    stopSource() {
+        if (!this.sourceNode) {
+            return;
+        }
+
+        this.sourceNode.onended = null;
+        try {
+            this.sourceNode.stop();
+        } catch (error) {
+            logger.debug('Audio source was already stopped:', error);
+        }
+        this.sourceNode = null;
+        this.isPlaying = false;
+    }
 
     updateVolume() {
-        const clampedVolume = Math.max(0, Math.min(1, state.get('volume')));
-        if (state.get('volume') != clampedVolume) {
-            return state.set('volume', clampedVolume);
+        const volume = Math.max(0, Math.min(1, Number(state.get('volume')) || 0));
+        if (volume !== state.get('volume')) {
+            state.set('volume', volume);
         }
-
         if (this.gainNode) {
-            this.gainNode.gain.value = clampedVolume;
+            this.gainNode.gain.value = volume;
         }
     }
-
-    handleTrackEnd() {
-        if (!this.currentTrack?.loaded) {
-            return;
-        }
-
-        fire('track-ended');
-
-        if (this.repeatType === 'track') {
-            this.rewindTo(0);
-            return;
-        }
-
-        if (
-            this.repeatType === 'playlist' &&
-            this.currentPlaylist
-        ) {
-            // TODO: Implement playlist navigation.
-            logger.info('Playlist repeat enabled, but playlist navgation logic isnt implemented');
-            return;
-        }
-
-        if (state.get('playback-state') == 'playing') {
-            state.set('current-position', state.get('current-track').duration);
-
-            try {
-                this.context.suspend();
-            } catch (error) {
-                logger.error('Error suspending audio context:', error);
-            }
-
-            state.set('playback-state', 'paused');
-        }
-    }
-
 
     playFrom(position) {
-        if (
-            !this.currentTrack?.loaded ||
-            !this.currentTrack.audioBuffer
-        ) {
-            logger.error('Cannot play: no track loaded or invalid audio buffer');
-            return;
+        if (!this.currentTrack?.loaded || !this.currentTrack.audioBuffer) {
+            throw new Error('No decoded track is loaded');
         }
-
         if (!this.context || !this.gainNode) {
-            logger.error('Cannot play: audio system is not initialized');
-            return;
+            throw new Error('Audio system is not initialized');
         }
 
-        // Stop and clean up previous source node.
-        if (this.sourceNode) {
-            try {
-                this.sourceNode.onended = null;
-                this.sourceNode.stop();
-            } catch (error) {
-                // Source may already be stopped.
-            }
-
-            this.sourceNode = null;
-        }
-
-        try {
-            this.sourceNode = this.context.createBufferSource();
-            this.sourceNode.buffer = state.get('current-track').audioBuffer;
-            this.sourceNode.connect(this.gainNode);
-            this.sourceNode.onended = () => {
+        this.createSpeaker(this.currentTrack);
+        this.stopSource();
+        const boundedPosition = Math.max(0, Math.min(position, this.currentTrack.duration));
+        this.sourceNode = this.context.createBufferSource();
+        this.sourceNode.buffer = this.currentTrack.audioBuffer;
+        this.sourceNode.connect(this.gainNode);
+        const sourceNode = this.sourceNode;
+        sourceNode.onended = () => {
+            if (this.sourceNode === sourceNode) {
                 this.handleTrackEnd();
-            };
-
-            this.playbackStartTime = this.context.currentTime;
-
-            this.playbackOffset = position;
-
-            this.sourceNode.start(0, position);
-
-            if (this.context.state === 'suspended') {
-                this.context.resume();
             }
+        };
 
-            this.isPlaying = true;
-            this.currentPosition = position;
+        this.playbackStartTime = this.context.currentTime;
+        this.playbackOffset = boundedPosition;
+        this.currentPosition = boundedPosition;
+        state.set('current-position', boundedPosition);
+        this.sourceNode.start(0, boundedPosition);
 
-            logger.debug(`Playback started at ${position.toFixed(2)}s`);
-
-            // fire(...)
-        } catch (error) {
-            logger.error('Error starting playback:', error);
-
-            state.set('playback-state', 'paused');
+        if (this.context.state === 'suspended') {
+            this.context.resume().catch(error => logger.error('Failed to resume audio context:', error));
         }
+        this.isPlaying = true;
+        state.set('playback-state', 'playing');
+        this.emit('playback-state', 'playing');
     }
-
 
     getCurrentPosition() {
-        if (
-            !this.isPlaying ||
-            !this.currentTrack?.loaded
-        ) {
+        if (!this.isPlaying || !this.context || !this.currentTrack?.loaded) {
             return this.currentPosition;
         }
 
-        try {
-            const elapsed =
-                this.context.currentTime -
-                this.playbackStartTime;
-
-            const position =
-                this.playbackOffset + elapsed;
-
-            if (
-                position >=
-                this.currentTrack.duration
-            ) {
-                return this.currentTrack.duration;
-            }
-
-            this.currentPosition = position;
-
-            return position;
-        } catch (error) {
-            this.log(
-                'Error getting current position:',
-                error
-            );
-
-            return this.currentPosition;
-        }
+        this.currentPosition = Math.min(
+            this.currentTrack.duration,
+            this.playbackOffset + this.context.currentTime - this.playbackStartTime
+        );
+        return this.currentPosition;
     }
-
 
     playPause() {
         if (!this.currentTrack?.loaded) {
-            this.log('Cannot play/pause: no track loaded');
+            logger.info('Cannot toggle playback: no track is loaded');
             return;
         }
 
         if (this.isPlaying) {
-            this.currentPosition =
-                this.getCurrentPosition();
-
-            try {
-                if (this.sourceNode) {
-                    this.sourceNode.onended = null;
-                    this.sourceNode.stop();
-                }
-
-                this.context.suspend();
-            } catch (error) {
-                this.log(
-                    'Error pausing playback:',
-                    error
-                );
-            }
-
-            this.sourceNode = null;
-            this.isPlaying = false;
-
-            this.log('Playback paused');
-
-            this.emit('pause', {
-                track: this.currentTrack,
-                position: this.currentPosition,
-            });
-
+            this.currentPosition = this.getCurrentPosition();
+            this.stopSource();
+            this.context.suspend().catch(error => logger.error('Failed to suspend audio context:', error));
+            state.set('current-position', this.currentPosition);
+            state.set('playback-state', 'paused');
+            this.emit('playback-state', 'paused');
             return;
         }
 
-        // If at the end of the track,
-        // restart from the beginning.
-        if (
-            this.currentPosition >=
-            this.currentTrack.duration
-        ) {
+        if (this.currentPosition >= this.currentTrack.duration) {
             this.currentPosition = 0;
         }
-
         this.playFrom(this.currentPosition);
     }
 
-
-    updateCurrentPosition() {
-        if (!this.currentTrack?.loaded) {
-            return 0;
-        }
-
-        const position =
-            this.getCurrentPosition();
-
-        if (
-            position >= this.currentTrack.duration &&
-            this.isPlaying
-        ) {
-            this.handleTrackEnd();
-        }
-
-        return position;
-    }
-
-
     rewindTo(position) {
         if (!this.currentTrack?.loaded) {
-            this.log('Cannot rewind: no track loaded');
+            logger.info('Cannot seek: no track is loaded');
             return;
         }
 
-        const newPosition = Math.max(
-            0,
-            Math.min(
-                position,
-                this.currentTrack.duration
-            )
-        );
-
-        // Avoid micro-rewinds.
-        if (
-            Math.abs(
-                newPosition - this.currentPosition
-            ) < 0.1
-        ) {
-            return;
-        }
-
+        const boundedPosition = Math.max(0, Math.min(position, this.currentTrack.duration));
         if (this.isPlaying) {
-            this.playFrom(newPosition);
-        } else {
-            this.currentPosition = newPosition;
-
-            this.emit('position-changed', {
-                position: newPosition,
-            });
-        }
-
-        this.log(
-            `Rewound to ${newPosition.toFixed(2)}s`
-        );
-    }
-
-
-    loadAndPlayTrack(track) {
-        if (!track || !track.audioBuffer) {
-            this.log(
-                'Invalid track provided to loadAndPlayTrack'
-            );
+            this.playFrom(boundedPosition);
             return;
         }
 
-        this.reset();
-
-        this.currentTrack = track;
-
-        this.createSpeaker();
-
-        this.currentPosition = 0;
-
-        this.playFrom(0);
-
-        this.emit('track-changed', track);
-
-        this.log(
-            `Now playing: ${track.title}`
-        );
+        this.currentPosition = boundedPosition;
+        state.set('current-position', boundedPosition);
     }
 
+    handleTrackEnd() {
+        if (!this.isPlaying) {
+            return;
+        }
+
+        this.sourceNode = null;
+        this.isPlaying = false;
+
+        if (state.get('repeat-type') === 'track') {
+            this.playFrom(0);
+            return;
+        }
+
+        if (state.get('repeat-type') === 'playlist' && this.currentPlaylist.length > 0) {
+            this.nextTrack();
+            return;
+        }
+
+        this.currentPosition = this.currentTrack.duration;
+        state.set('current-position', this.currentPosition);
+        state.set('playback-state', 'paused');
+        this.emit('playback-state', 'paused');
+    }
 
     nextTrack() {
-        if (
-            !this.currentPlaylist ||
-            this.currentPlaylist.length === 0
-        ) {
-            this.log('No playlist available');
+        const tracks = this.currentPlaylist._tracks;
+        if (tracks.length === 0) {
+            logger.info('Cannot skip: playlist is empty');
             return;
         }
 
-        // TODO: Implement actual playlist navigation.
-        this.log('Next track: not implemented');
+        const currentIndex = tracks.indexOf(this.currentTrack);
+        const nextIndex = (currentIndex + 1) % tracks.length;
+        this.loadAndPlayTrack(tracks[nextIndex]);
     }
 
-
     previousTrack() {
-        if (
-            !this.currentPlaylist ||
-            this.currentPlaylist.length === 0
-        ) {
-            this.log('No playlist available');
+        if (!this.currentTrack?.loaded) {
+            logger.info('Cannot go back: no track is loaded');
             return;
         }
 
-        // TODO: Implement actual playlist navigation.
-        this.log('Previous track: not implemented');
+        if (this.getCurrentPosition() > 3) {
+            this.playFrom(0);
+            return;
+        }
+
+        const tracks = this.currentPlaylist._tracks;
+        const currentIndex = tracks.indexOf(this.currentTrack);
+        if (tracks.length < 2 || currentIndex < 0) {
+            this.playFrom(0);
+            return;
+        }
+
+        const previousIndex = (currentIndex - 1 + tracks.length) % tracks.length;
+        this.loadAndPlayTrack(tracks[previousIndex]);
+    }
+
+    destroy() {
+        clearInterval(this.positionTimer);
+        this.positionTimer = null;
+        this.stopSource();
+        this.speaker?.end();
+        this.speaker = null;
+        if (this.context && this.context.state !== 'closed') {
+            return this.context.close();
+        }
     }
 }

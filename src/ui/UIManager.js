@@ -34,15 +34,16 @@ export default class UIManager{
         this.themeManager.load();
         this.currentStyles = this.themeManager.getStyles();
 
-        this.messageBox.init(this.currentStyles);
-        this.messageBox.on('needs-rerender', () => this.render());
-
         this.playerBox.init(this.currentStyles);
         this.playerBox.on('needs-rerender', () => this.render());
 
         this.tabManager.init(this.currentStyles);
         this.tabManager.on('needs-rerender', () => this.render());
         this.tabManager.on('message', (text, timeout) => this.messageBox.display(text, timeout));
+
+        // after all to be on top
+        this.messageBox.init(this.currentStyles);
+        this.messageBox.on('needs-rerender', () => this.render());
 
         logger.info('[UI] ui initialized');
     }

@@ -1,0 +1,97 @@
+player-box:
+  top: "100%-3"
+  left: 2
+  width: "100%-3"
+  height: 3
+  content: " ♫ "
+  shadow: false
+  border:
+    type: "line"
+  style:
+    fg: "colors:success-fg"
+    border:
+      fg: "colors:primary-fg"
+button-play:
+  top: 0
+  left: "50%-3"
+  width: 5
+  height: 1
+  tags: true
+  align: "center"
+  style:
+    hover:
+      bg: "colors:neutral-gray"
+button-prev:
+  top: 0
+  left: "50%-9"
+  width: 5
+  height: 1
+  tags: true
+  style:
+    hover:
+      bg: "colors:neutral-gray"
+button-next:
+  top: 0
+  left: "50%+3"
+  width: 5
+  height: 1
+  tags: true
+  align: "center"
+  style:
+    hover:
+      bg: "colors:neutral-gray"
+track-time:
+  top: 0
+  left: "100%-14"
+  width: 11
+  height: 1
+  content: "00:00|00:00"
+  align: "center"
+  style:
+    fg: "colors:primary-fg"
+    hover:
+      bg: "colors:neutral-gray"
+track-title:
+  top: 0
+  left: 3
+  width: 11
+  height: 1
+  content: "Track title"
+  style:
+    fg: "colors:primary-fg"
+    hover:
+      underline: true
+track-artist:
+  top: 0
+  left: 15
+  width: 11
+  height: 1
+  content: "- artist"
+  style:
+    fg: "colors:secondary-fg"
+    hover:
+      fg: "colors:primary-fg"
+#progress-bar-char0: "━"
+#progress-bar-char1: "━"
+progress-bar-char0: "-"
+progress-bar-char1: "-"
+progress-bar-color0: "colors:primary-fg"
+progress-bar-color1: "colors:active-fg"
+progress-bar-box:
+  top: -2
+  left: 0
+  height: 2
+  tags: true
+  width: "100%-2"
+  style:
+    fg: "colors:highlight-fg"
+button-repeat-type:
+  top: 0
+  left: "100%-8"
+  width: 5
+  height: 1
+  tags: true
+  align: "center"
+  style:
+    hover:
+      bg: "colors:neutral-gray"
