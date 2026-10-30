@@ -5,12 +5,14 @@ import UIElement from '../UIElement.js';
 export default class TrackInfo extends UIElement {
     init(styles) {
         this.styles = styles;
-        this.trackTime = blessed.box(styles['track-time']);
-        this.trackTitle = blessed.box(styles['track-title']);
-        this.trackArtist = blessed.box(styles['track-artist']);
+        this.addChild('time', blessed.box(styles['track-time']));
+        this.addChild('title', blessed.box(styles['track-title']));
+        this.addChild('artist', blessed.box(styles['track-artist']));
 
         state.on('change:current-track', () => this.update());
         state.on('change:current-position', () => this.update());
+
+        super.init(styles);
     }
 
     get track() {
@@ -22,7 +24,7 @@ export default class TrackInfo extends UIElement {
     }
 
     get maxArtistLength() {
-        return Math.max(0, Math.floor(screen.width / 2 - 14) - this.trackTitle.width);
+        return Math.max(0, Math.floor(screen.width / 2 - 14) - this.getChild('title').e.width);
     }
 
     get trackTimeContent() {
@@ -45,34 +47,19 @@ export default class TrackInfo extends UIElement {
     }
 
     update() {
+        const trackTime = this.getChild('time').e;
+        const trackTitle = this.getChild('title').e;
+        const trackArtist = this.getChild('artist').e;
         const title = this.truncate(this.track?.title ?? 'Track title', this.maxTitleLength);
         const artist = this.truncate(`- ${this.track?.artist ?? 'Unknown'}`, this.maxArtistLength);
 
-        this.trackTime.setContent(this.trackTimeContent);
-        this.trackTitle.setContent(title);
-        this.trackTitle.width = Math.min(title.length, this.maxTitleLength);
-        this.trackArtist.setContent(artist);
-        this.trackArtist.width = Math.min(artist.length, this.maxArtistLength);
-        this.trackArtist.left = this.styles['track-title'].left + this.trackTitle.width + 1;
+        trackTime.setContent(this.trackTimeContent);
+        trackTitle.setContent(title);
+        trackTitle.width = Math.min(title.length, this.maxTitleLength);
+        trackArtist.setContent(artist);
+        trackArtist.width = Math.min(artist.length, this.maxArtistLength);
+        trackArtist.left = this.styles['track-title'].left + trackTitle.width + 1;
 
         this.emit('needs-rerender');
-    }
-
-    appendTo(playerBox) {
-        playerBox.append(this.trackTime);
-        playerBox.append(this.trackTitle);
-        playerBox.append(this.trackArtist);
-    }
-
-    show() {
-        this.trackTime.show();
-        this.trackTitle.show();
-        this.trackArtist.show();
-    }
-
-    hide() {
-        this.trackTime.hide();
-        this.trackTitle.hide();
-        this.trackArtist.hide();
     }
 }

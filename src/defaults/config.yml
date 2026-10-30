@@ -1,0 +1,11 @@
+theme: basic
+show-welcome-screen: true
+binds:
+  change-tab:
+    - tab
+  play-pause:
+    - space
+  next-track:
+    - right
+  previous-track:
+    - left

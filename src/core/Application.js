@@ -6,6 +6,7 @@ import ApplicationState from "./ApplicationState.js";
 import KeybindsManager from "./KeybindsManager.js";
 import UIManager from "../ui/UIManager.js";
 import AudioSystem from "../audio/AudioSystem.js";
+import Environment from "./Environment.js";
 
 
 export default class Application extends EventEmitter {
@@ -31,6 +32,8 @@ export default class Application extends EventEmitter {
     init() {
         logger.info('started Application.init()');
 
+        Environment.initialize();
+
         this.config.readConfig();
         this.state.init();
         this.binds.init();
@@ -42,6 +45,7 @@ export default class Application extends EventEmitter {
         this.on('ui:next-track', () => this.runAudioCommand(() => this.as.nextTrack()));
         this.on('ui:previous-track', () => this.runAudioCommand(() => this.as.previousTrack()));
         this.on('ui:change-repeat-type', () => this.runAudioCommand(() => this.as.changeRepeatType()));
+        this.on('ui:seek', position => this.runAudioCommand(() => this.as.rewindTo(position)));
 
         for (const key of ['current-track', 'current-position', 'playback-state']) {
             this.state.on(`change:${key}`, () => {

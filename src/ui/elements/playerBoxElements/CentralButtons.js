@@ -13,16 +13,17 @@ export default class CentralButtons extends UIElement {
     init(styles) {
         this.styles = styles;
 
-        this.buttonPlay = blessed.box(styles['button-play']);
-        this.buttonPrev = blessed.box(styles['button-prev']);
-        this.buttonNext = blessed.box(styles['button-next']);
+        const buttonPlay = this.addChild('play', blessed.box(styles['button-play'])).e;
+        const buttonPrev = this.addChild('previous', blessed.box(styles['button-prev'])).e;
+        const buttonNext = this.addChild('next', blessed.box(styles['button-next'])).e;
     
-        this.buttonPlay.on('click', () => fire('ui:play-pause'));
-        this.buttonPrev.on('click', () => fire('ui:previous-track'));
-        this.buttonNext.on('click', () => fire('ui:next-track'));
+        buttonPlay.on('click', () => fire('ui:play-pause'));
+        buttonPrev.on('click', () => fire('ui:previous-track'));
+        buttonNext.on('click', () => fire('ui:next-track'));
 
         state.on('change:current-track', () => this.update());
         state.on('change:playback-state', () => this.update());
+        super.init(styles);
     }
 
     get buttonPlayContent() {
@@ -56,16 +57,10 @@ export default class CentralButtons extends UIElement {
 
     update() {
         this.active = Boolean(state.get('current-track')?.loaded);
-        this.buttonPlay.setContent(this.buttonPlayContent);
-        this.buttonNext.setContent(this.buttonNextContent);
-        this.buttonPrev.setContent(this.buttonPrevContent);
+        this.getChild('play').e.setContent(this.buttonPlayContent);
+        this.getChild('next').e.setContent(this.buttonNextContent);
+        this.getChild('previous').e.setContent(this.buttonPrevContent);
 
         this.emit('needs-rerender');
-    }
-
-    appendTo(playerBox) {
-        playerBox.append(this.buttonPlay);
-        playerBox.append(this.buttonPrev);
-        playerBox.append(this.buttonNext);
     }
 }

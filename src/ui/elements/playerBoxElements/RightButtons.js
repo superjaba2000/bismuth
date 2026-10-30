@@ -7,10 +7,9 @@ export default class RightButtons extends UIElement {
 
     init(styles) {
         this.styles = styles;
-        this.buttonRepeatType = blessed.box(styles['button-repeat-type']);
-        this.e = this.buttonRepeatType;
+        this.e = blessed.box(styles['button-repeat-type']);
 
-        this.buttonRepeatType.on('click', () => fire('ui:change-repeat-type'));
+        this.e.on('click', () => fire('ui:change-repeat-type'));
         state.on('change:repeat-type', () => this.update());
     }
 
@@ -26,11 +25,7 @@ export default class RightButtons extends UIElement {
     }
 
     update() {
-        this.buttonRepeatType.setContent(this.buttonRepeatTypeContent);
+        this.e.setContent(this.buttonRepeatTypeContent);
         this.emit('needs-rerender');
-    }
-
-    appendTo(playerBox) {
-        playerBox.append(this.buttonRepeatType);
     }
 }

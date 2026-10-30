@@ -2,9 +2,8 @@ import YAML from 'yaml';
 import path from 'node:path';
 import fs from 'node:fs';
 import logger from '../util/logger.js';
-import { app, state } from '../app.js';
-
-const SOURCE_THEME_DIR = path.resolve('themes');
+import { state } from '../app.js';
+import Environment from '../core/Environment.js';
 
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -66,16 +65,10 @@ export default class ThemeManager {
     load() {
         this.themes = [];
 
-        const themeDir = path.join(app.config.configDir, 'themes');
+        const themeDir = Environment.themesDir;
         if (!fs.existsSync(themeDir)) {
-            if (!fs.existsSync(SOURCE_THEME_DIR)) {
-                logger.error(`The source theme directory was not found at ${SOURCE_THEME_DIR}`);
-                return;
-            }
-
-            fs.mkdirSync(app.config.configDir, { recursive: true });
-            fs.cpSync(SOURCE_THEME_DIR, themeDir, { recursive: true });
-            logger.info(`Copied themes to ${themeDir}`);
+            logger.error(`The theme directory was not found at ${themeDir}`);
+            return;
         }
 
         const dirContent = fs.readdirSync(themeDir, { withFileTypes: true });

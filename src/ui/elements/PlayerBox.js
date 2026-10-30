@@ -6,59 +6,27 @@ import RightButtons from './playerBoxElements/RightButtons.js';
 import TrackInfo from './playerBoxElements/TrackInfo.js';
 import { state } from '../../app.js';
 
-// extends UITab but really a element (with some children)
 export default class PlayerBox extends UIElement {
-    children = [];
-
     constructor() {
         super();
-        this.progressBar = new ProgressBar();
-        this.centralButtons = new CentralButtons();
-        this.rightButtons = new RightButtons();
-        this.trackInfo = new TrackInfo();
+        this.addChild('progress-bar', new ProgressBar());
+        this.addChild('central-buttons', new CentralButtons());
+        this.addChild('right-buttons', new RightButtons());
+        this.addChild('track-info', new TrackInfo());
     }
 
     init(styles) {
         this.e = blessed.box(styles['player-box']);
-
-        this.progressBar.init(styles);
-        this.progressBar.on('needs-rerender', () => this.emit('needs-rerender'));
-        
-        this.centralButtons.init(styles);
-        this.centralButtons.on('needs-rerender', () => this.emit('needs-rerender'));
-
-        this.rightButtons.init(styles);
-        this.rightButtons.on('needs-rerender', () => this.emit('needs-rerender'));
-
-        this.trackInfo.init(styles);
-        this.trackInfo.on('needs-rerender', () => this.emit('needs-rerender'));
-    }
-
-    appendTo(parent) {
-        parent.append(this.e);
-
-        this.progressBar.appendTo(this.e);
-        this.centralButtons.appendTo(this.e);
-        this.rightButtons.appendTo(this.e);
-        this.trackInfo.appendTo(this.e);
-    }
-
-    show() {
-        super.show();
-
-        this.progressBar.show();
-        this.centralButtons.show();
-        this.rightButtons.show();
-        this.trackInfo.show();
+        super.init(styles);
     }
 
     update() {
         const track = state.get('current-track');
         const duration = track?.duration ?? 0;
         const position = state.get('current-position') ?? 0;
-        this.progressBar.setPercent(duration > 0 ? position / duration * 100 : 0);
-        this.centralButtons.update();
-        this.rightButtons.update();
-        this.trackInfo.update();
+        this.getChild('progress-bar').setPercent(duration > 0 ? position / duration * 100 : 0);
+        this.getChild('central-buttons').update();
+        this.getChild('right-buttons').update();
+        this.getChild('track-info').update();
     }
 }

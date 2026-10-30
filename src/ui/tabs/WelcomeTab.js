@@ -38,7 +38,6 @@ export default class WelcomeTab extends UITab {
     }
 
     init(styles) {
-        super.init();
         this.generateLogo();
 
         this.addChild('logo-box', blessed.box({
@@ -57,5 +56,7 @@ export default class WelcomeTab extends UITab {
             top: styles['tab0-logo-box'].top + LOGO_HEIGTH + 2,
             height: "100%-" + `${(styles['tab0-logo-box'].top + LOGO_HEIGTH + 4)}`,
         }));
+
+        super.init(styles);
     }
 }

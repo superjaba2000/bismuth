@@ -1,7 +1,7 @@
 import blessed from 'reblessed';
 import logger from '../../util/logger.js';
 import { clamp, screenSize } from '../../util/util.js';
-import { app, state } from '../../app.js';
+import { app, screen, state } from '../../app.js';
 import UITab from './UITab.js';
 
 // old old code
@@ -19,8 +19,6 @@ export default class FilesTab extends UITab {
     separatorActive = false;
 
     init(styles) { 
-        super.init();
-
         logger.debug('[FilesTab] Initializing...');
 
         const separator = blessed.line(styles['tab1-separator']);
@@ -35,7 +33,6 @@ export default class FilesTab extends UITab {
         app.as.on('output-error', error => {
             this.emit('message', `Audio output failed: ${error.message}`, 5);
         });
-        this.updatePlaylist();
 
         fileManager.on('file', async filePath => {
             this.emit('message', 'Loading file...', 0);
@@ -60,16 +57,37 @@ export default class FilesTab extends UITab {
         this.addChild('playlist', playlist);
         this.addChild('playlist-header', playlistHeader);
         this.addChild('filemanager', fileManager);
+        this.updatePlaylist();
 
+        screen.on('mouse', e => {
+            if (!this.isActive) return;
+
+            const separator = this.getChild('separator').e;
+            const eventOnSeparator = e.x === separator.aleft
+                && e.y >= separator.top
+                && e.y < separator.top + separator.height;
+
+            if (e.action === 'mousedown' && e.button === 'left' && eventOnSeparator) {
+                if (!this.separatorActive) {
+                    separator.style.fg = 'white';
+                    this.separatorActive = true;
+                }
+
+                this.resize();
+                this.emit('needs-rerender');
+            } else if (e.action === 'mouseup' && e.button === 'left' && this.separatorActive) {
+                separator.style.fg = 'gray';
+                this.separatorActive = false;
+                this.emit('needs-rerender');
+            }
+        });
+
+        super.init(styles);
         logger.debug('[FilesTab] initialized');
     }
 
     updatePlaylist() {
-        const playlist = this.children['playlist'];
-        if (!playlist) {
-            return;
-        }
-
+        const playlist = this.getChild('playlist').e;
         const tracks = state.get('current-playlist')?.tracks ?? [];
         const currentTrack = state.get('current-track');
         playlist.clearItems();
@@ -79,41 +97,11 @@ export default class FilesTab extends UITab {
         }
     }
 
-    appendTo(screen) {
-        super.appendTo(screen);
-
-        // TODO get colors from styles
-        screen.on('mouse', e => {
-            if(!this.isActive) return;
-
-            const s = this.children['separator'];
-            const eventOnSeparator = (e.x === s.aleft && (e.y >= s.top && e.y < s.top + s.height));
-
-            if(e.action === 'mousedown' && e.button === 'left') {
-                if(eventOnSeparator){
-                    if(!this.separatorActive) {
-                        s.style.fg = 'white';
-                        this.separatorActive = true;
-                    }
-
-                    this.resize();
-                    this.emit('needs-rerender');
-                }
-            } else if(e.action === 'mouseup' && e.button === 'left') {
-                if(this.separatorActive) {
-                    s.style.fg = 'gray';
-                    this.separatorActive = false;
-                    this.emit('needs-rerender');
-                }
-            }
-        });
-    }
-
     resize() {
-        const s = this.children['separator'];
-        const p = this.children['playlist'];
-        const ph = this.children['playlist-header'];
-        const fm = this.children['filemanager'];
+        const s = this.getChild('separator').e;
+        const p = this.getChild('playlist').e;
+        const ph = this.getChild('playlist-header').e;
+        const fm = this.getChild('filemanager').e;
 
         s.left = clamp(s.left, 23, screenSize().width - 20);
         s.top = this.separatorY;
@@ -126,10 +114,11 @@ export default class FilesTab extends UITab {
 
     prerender() {
         this.resize();
+        super.prerender();
     }
 
     show() {
         super.show();
-        this.children['filemanager'].focus();
+        this.getChild('filemanager').e.focus();
     }
 }

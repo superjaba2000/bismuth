@@ -1,20 +1,16 @@
-import { EventEmitter } from "node:events";
 import logger from "../../util/logger.js";
 import { state } from '../../app.js';
+import UIElement from '../elements/UIElement.js';
 
-export default class UITab extends EventEmitter {
+export default class UITab extends UIElement {
     name = 'tab';
-    children = {};
-
-    get childrenList() {
-        return Object.values(this.children);
-    }
 
     get isActive() {
         return state.get("active-tab") == this.name;
     }
 
-    init() {
+    init(styles) {
+        super.init(styles);
         state.on("change:active-tab", () => {
             if(this.isActive) {
                 logger.debug(`Active tab changed to "${this.name}"`);
@@ -22,30 +18,6 @@ export default class UITab extends EventEmitter {
             } else {
                 this.hide();
             }
-        })
+        });
     }
-
-    addChild(name, child) {
-        this.children[name] = child;
-    }
-
-    appendTo(parent) {
-        for (const child of this.childrenList) {
-            parent.append(child);
-        }
-    }
-
-    show() {
-        for (const child of this.childrenList) {
-            child.show();
-        }
-    }
-
-    hide() {
-        for (const child of this.childrenList) {
-            child.hide();
-        }
-    }
-
-    prerender() {}
 }
