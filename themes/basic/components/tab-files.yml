@@ -1,3 +1,8 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In theme.yml of your theme, specify "basedOn" as "basic"
+
+# Playlist heading and list.
 tab1-playlist-header:
   top: 1
   left: 1
@@ -22,6 +27,8 @@ tab1-playlist:
     selected:
       bg: "colors:playlist-selected-bg"
       fg: "colors:selected-fg"
+
+# Divider and file browser.
 tab1-separator:
   orientation: "vertical"
   top: 1

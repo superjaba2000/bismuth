@@ -3,6 +3,7 @@ import UIElement from './UIElement.js';
 import ProgressBar from './playerBoxElements/ProgressBar.js';
 import CentralButtons from './playerBoxElements/CentralButtons.js';
 import RightButtons from './playerBoxElements/RightButtons.js';
+import TrackInfo from './playerBoxElements/TrackInfo.js';
 import { state } from '../../app.js';
 
 // extends UITab but really a element (with some children)
@@ -14,6 +15,7 @@ export default class PlayerBox extends UIElement {
         this.progressBar = new ProgressBar();
         this.centralButtons = new CentralButtons();
         this.rightButtons = new RightButtons();
+        this.trackInfo = new TrackInfo();
     }
 
     init(styles) {
@@ -27,6 +29,9 @@ export default class PlayerBox extends UIElement {
 
         this.rightButtons.init(styles);
         this.rightButtons.on('needs-rerender', () => this.emit('needs-rerender'));
+
+        this.trackInfo.init(styles);
+        this.trackInfo.on('needs-rerender', () => this.emit('needs-rerender'));
     }
 
     appendTo(parent) {
@@ -35,6 +40,7 @@ export default class PlayerBox extends UIElement {
         this.progressBar.appendTo(this.e);
         this.centralButtons.appendTo(this.e);
         this.rightButtons.appendTo(this.e);
+        this.trackInfo.appendTo(this.e);
     }
 
     show() {
@@ -43,6 +49,7 @@ export default class PlayerBox extends UIElement {
         this.progressBar.show();
         this.centralButtons.show();
         this.rightButtons.show();
+        this.trackInfo.show();
     }
 
     update() {
@@ -52,5 +59,6 @@ export default class PlayerBox extends UIElement {
         this.progressBar.setPercent(duration > 0 ? position / duration * 100 : 0);
         this.centralButtons.update();
         this.rightButtons.update();
+        this.trackInfo.update();
     }
 }

@@ -2,10 +2,9 @@ import YAML from 'yaml';
 import path from 'node:path';
 import fs from 'node:fs';
 import logger from '../util/logger.js';
-import { state } from '../app.js';
+import { app, state } from '../app.js';
 
-// TODO move to config
-const THEME_DIR = './themes';
+const SOURCE_THEME_DIR = path.resolve('themes');
 
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -67,15 +66,22 @@ export default class ThemeManager {
     load() {
         this.themes = [];
 
-        if (!fs.existsSync(THEME_DIR)) {
-            logger.info('The catalog with themes was not found!');
-            return;
+        const themeDir = path.join(app.config.configDir, 'themes');
+        if (!fs.existsSync(themeDir)) {
+            if (!fs.existsSync(SOURCE_THEME_DIR)) {
+                logger.error(`The source theme directory was not found at ${SOURCE_THEME_DIR}`);
+                return;
+            }
+
+            fs.mkdirSync(app.config.configDir, { recursive: true });
+            fs.cpSync(SOURCE_THEME_DIR, themeDir, { recursive: true });
+            logger.info(`Copied themes to ${themeDir}`);
         }
 
-        const dirContent = fs.readdirSync(THEME_DIR, { withFileTypes: true });
+        const dirContent = fs.readdirSync(themeDir, { withFileTypes: true });
         const themePaths = dirContent
             .filter(entry => entry.isDirectory())
-            .map(entry => path.join(THEME_DIR, entry.name));
+            .map(entry => path.join(themeDir, entry.name));
         const rawThemes = new Map();
 
         for (const themePath of themePaths) {

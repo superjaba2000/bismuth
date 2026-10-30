@@ -1,3 +1,8 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In theme.yml of your theme, specify "basedOn" as "basic"
+
+# Player container.
 player-box:
   top: "100%-3"
   left: 2
@@ -11,6 +16,8 @@ player-box:
     fg: "colors:success-fg"
     border:
       fg: "colors:primary-fg"
+
+# Playback controls.
 button-play:
   top: 0
   left: "50%-3"
@@ -40,6 +47,8 @@ button-next:
   style:
     hover:
       bg: "colors:neutral-gray"
+
+# Track metadata and playback time.
 track-time:
   top: 0
   left: "100%-14"
@@ -71,8 +80,8 @@ track-artist:
     fg: "colors:secondary-fg"
     hover:
       fg: "colors:primary-fg"
-#progress-bar-char0: "━"
-#progress-bar-char1: "━"
+
+# Progress bar characters, colors, and layout.
 progress-bar-char0: "-"
 progress-bar-char1: "-"
 progress-bar-color0: "colors:primary-fg"
@@ -85,9 +94,11 @@ progress-bar-box:
   width: "100%-2"
   style:
     fg: "colors:highlight-fg"
+
+# Repeat mode control.
 button-repeat-type:
   top: 0
-  left: "100%-8"
+  left: "100%-20"
   width: 5
   height: 1
   tags: true

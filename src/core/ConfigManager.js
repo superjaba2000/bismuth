@@ -4,7 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import YAML from 'yaml';
 
-const APP_NAME = 'bismuth/';
+const APP_NAME = 'bismuth';
 const CONFIG_FILE_NAME = 'config.yml';
 const BASE_CONFIG = {
     "theme": "basic",

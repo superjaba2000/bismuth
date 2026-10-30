@@ -1,3 +1,7 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In theme.yml of your theme, specify "basedOn" as "basic"
+
 colors:
   inactive-fg: "#999999"
   active-fg: "yellow"

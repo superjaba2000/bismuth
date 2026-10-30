@@ -1,10 +1,19 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In theme.yml of your theme, specify "basedOn" as "basic"
+
+# Shared colors for general-purpose widgets.
 fg-color-inactive: "colors:inactive-fg"
+
+# Player control and progress colors.
 button-play-main-fg: "colors:active-fg"
 button-play-border-fg: "colors:highlight-fg"
 buttons-prev-next-fg: "colors:active-fg"
 button-repeat-type-fg: "colors:success-fg"
 progress-bar-fg-active: "colors:active-fg"
 progress-bar-fg-inactive: "colors:highlight-fg"
+
+# Shared dialog and background widgets.
 message-box:
   top: "50%-3"
   left: "50%-13"
