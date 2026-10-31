@@ -61,7 +61,10 @@ export default class Application extends EventEmitter {
         try {
             command();
         } catch (error) {
-            logger.error('Audio command failed:', error);
+            logger.errorWithContext('Audio command failed', error, {
+                state: this.state.getDiagnostics(),
+                audio: this.as.getDiagnostics()
+            });
             this.ui.messageBox.display(`Audio playback failed: ${error.message}`, 5);
         }
     }

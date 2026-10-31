@@ -2,7 +2,7 @@ import logger from '../util/logger.js';
 import { EventEmitter } from 'node:events';
 import { StreamAudioContext } from '@descript/web-audio-js';
 import Speaker from 'speaker';
-import path from 'node:path';
+import path, { basename } from 'node:path';
 import { state } from '../app.js';
 import AudioLoader from './AudioLoader.js';
 import Track from '../tracks/Track.js';
@@ -25,6 +25,52 @@ export default class AudioSystem extends EventEmitter {
 
     get currentPlaylist() {
         return state.get('current-playlist');
+    }
+
+    getDiagnostics() {
+        return {
+            contextState: this.context?.state ?? 'unavailable',
+            sourceActive: Boolean(this.sourceNode),
+            speaker: this.speaker
+                ? {
+                    destroyed: this.speaker.destroyed,
+                    writableEnded: this.speaker.writableEnded
+                }
+                : 'unavailable',
+            isPlaying: this.isPlaying,
+            playbackOffset: Number(this.playbackOffset.toFixed(2)),
+            trackPath: this.currentTrack?.path ? basename(this.currentTrack.path) : null
+        };
+    }
+
+    createContext() {
+        this.context = new StreamAudioContext();
+        this.gainNode = this.context.createGain();
+        this.gainNode.connect(this.context.destination);
+        this.updateVolume();
+
+        if (this.speaker) {
+            this.context.pipe(this.speaker);
+        }
+    }
+
+    closeContext() {
+        const context = this.context;
+        this.context = null;
+        this.gainNode = null;
+
+        if (context && context.state !== 'closed') {
+            queueMicrotask(() => {
+                if (context.state !== 'closed') {
+                    context.close().catch(error => {
+                        logger.errorWithContext('Failed to close audio context', error, {
+                            state: state.getDiagnostics(),
+                            audio: this.getDiagnostics()
+                        });
+                    });
+                }
+            });
+        }
     }
 
     changeRepeatType() {
@@ -59,10 +105,11 @@ export default class AudioSystem extends EventEmitter {
             return;
         }
 
-        this.context = new StreamAudioContext();
-        this.gainNode = this.context.createGain();
-        this.gainNode.connect(this.context.destination);
-        this.updateVolume();
+        this.createContext();
+        if (this.positionTimer) {
+            return;
+        }
+
         state.on('change:volume', () => this.updateVolume());
         this.positionTimer = setInterval(() => {
             if (!this.isPlaying) {
@@ -85,7 +132,7 @@ export default class AudioSystem extends EventEmitter {
             throw new Error('No file path was selected');
         }
         if (!this.context || !this.gainNode) {
-            throw new Error('Audio system is not initialized');
+            this.createContext();
         }
 
         const absolutePath = path.resolve(filePath);
@@ -112,38 +159,63 @@ export default class AudioSystem extends EventEmitter {
 
         this.stopSource();
 
-        state.set('current-track', track);
-        state.set('current-position', 0);
         this.currentPosition = 0;
+        state.set('current-position', 0);
+        state.set('current-track', track);
         this.emit('track-changed', track);
         this.playFrom(0);
     }
 
     createSpeaker(track) {
         if (this.speaker) {
-            return;
+            return this.speaker;
         }
 
         try {
-            this.speaker = new Speaker({
+            const speaker = new Speaker({
                 channels: Math.min(track.audioBuffer.numberOfChannels || 2, 2),
                 sampleRate: track.audioBuffer.sampleRate || 44100,
                 bitDepth: 16
             });
-            this.speaker.on('error', error => {
-                logger.error('Audio output failed:', error);
+            this.speaker = speaker;
+            speaker.on('error', error => {
+                if (this.speaker !== speaker) {
+                    return;
+                }
+
+                logger.errorWithContext('Audio output failed', error, {
+                    state: state.getDiagnostics(),
+                    audio: this.getDiagnostics()
+                });
+                this.speaker = null;
+                try {
+                    speaker.close(false);
+                } catch (closeError) {
+                    logger.errorWithContext('Failed to close audio output', closeError, {
+                        state: state.getDiagnostics(),
+                        audio: this.getDiagnostics()
+                    });
+                }
+
                 if (this.isPlaying) {
                     this.currentPosition = this.getCurrentPosition();
                     this.stopSource();
+                    this.closeContext();
                     state.set('current-position', this.currentPosition);
                     state.set('playback-state', 'paused');
+                } else {
+                    this.closeContext();
                 }
                 this.emit('output-error', error);
             });
-            this.context.pipe(this.speaker);
+            this.context.pipe(speaker);
+            return speaker;
         } catch (error) {
             this.speaker = null;
-            logger.error('Failed to initialize audio output:', error);
+            logger.errorWithContext('Failed to initialize audio output', error, {
+                state: state.getDiagnostics(),
+                audio: this.getDiagnostics()
+            });
             throw error;
         }
     }
@@ -178,7 +250,7 @@ export default class AudioSystem extends EventEmitter {
             throw new Error('No decoded track is loaded');
         }
         if (!this.context || !this.gainNode) {
-            throw new Error('Audio system is not initialized');
+            this.createContext();
         }
 
         this.createSpeaker(this.currentTrack);
@@ -190,7 +262,11 @@ export default class AudioSystem extends EventEmitter {
         const sourceNode = this.sourceNode;
         sourceNode.onended = () => {
             if (this.sourceNode === sourceNode) {
-                this.handleTrackEnd();
+                queueMicrotask(() => {
+                    if (this.sourceNode === sourceNode) {
+                        this.handleTrackEnd();
+                    }
+                });
             }
         };
 
@@ -201,7 +277,12 @@ export default class AudioSystem extends EventEmitter {
         this.sourceNode.start(0, boundedPosition);
 
         if (this.context.state === 'suspended') {
-            this.context.resume().catch(error => logger.error('Failed to resume audio context:', error));
+            this.context.resume().catch(error => {
+                logger.errorWithContext('Failed to resume audio context', error, {
+                    state: state.getDiagnostics(),
+                    audio: this.getDiagnostics()
+                });
+            });
         }
         this.isPlaying = true;
         state.set('playback-state', 'playing');
@@ -229,7 +310,7 @@ export default class AudioSystem extends EventEmitter {
         if (this.isPlaying) {
             this.currentPosition = this.getCurrentPosition();
             this.stopSource();
-            this.context.suspend().catch(error => logger.error('Failed to suspend audio context:', error));
+            this.closeContext();
             state.set('current-position', this.currentPosition);
             state.set('playback-state', 'paused');
             this.emit('playback-state', 'paused');
@@ -277,6 +358,7 @@ export default class AudioSystem extends EventEmitter {
         }
 
         this.currentPosition = this.currentTrack.duration;
+        this.closeContext();
         state.set('current-position', this.currentPosition);
         state.set('playback-state', 'paused');
         this.emit('playback-state', 'paused');
@@ -320,10 +402,8 @@ export default class AudioSystem extends EventEmitter {
         clearInterval(this.positionTimer);
         this.positionTimer = null;
         this.stopSource();
-        this.speaker?.end();
+        this.closeContext();
+        this.speaker?.close(false);
         this.speaker = null;
-        if (this.context && this.context.state !== 'closed') {
-            return this.context.close();
-        }
     }
 }

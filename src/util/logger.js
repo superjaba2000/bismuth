@@ -53,6 +53,15 @@ const rejection_log_file_name = SEPARATE_LOGS ? path.join(logs_dir, 'bismuth-rej
 
 let logger;
 
+function errorWithContext(message, error, context = {}) {
+    const errorDetails = error instanceof Error
+        ? error.stack ?? `${error.name}: ${error.message}`
+        : String(error);
+    const contextDetails = JSON.stringify(context, null, 2);
+
+    logger.error(`${message}\n${errorDetails}\nContext: ${contextDetails}`);
+}
+
 try {
     logger = winston.createLogger({
         level: "debug",
@@ -109,13 +118,17 @@ try {
     console.error('Error initializing logger: ', error);
 
     logger = {
-        info: (msg) => $console.log(`[INFO]: ${msg}`),
+        info: (msg) => console.log(`[INFO]: ${msg}`),
         error: (msg) => console.error(`[ERROR]: ${msg}`),
         warn: (msg) => console.warn(`[WARN]: ${msg}`),
         debug: (msg) => console.debug(`[DEBUG]: ${msg}`)
     };
 
     logger.info('Using fallback logger (console)');
+}
+
+if (typeof logger.errorWithContext !== 'function') {
+    logger.errorWithContext = errorWithContext;
 }
 
 export default logger;

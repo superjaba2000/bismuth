@@ -43,8 +43,12 @@ export default class ProgressBar extends UIElement {
     }
 
     update() {
-        const activeLength = Math.floor(this.percent / 100 * this.e.width);
-        const inactiveLength = this.e.width - activeLength;
+        const width = Math.max(0, Math.floor(this.e.width));
+        const percent = Number.isFinite(this.percent)
+            ? Math.max(0, Math.min(100, this.percent))
+            : 0;
+        const activeLength = Math.floor(percent / 100 * width);
+        const inactiveLength = width - activeLength;
         this.e.content = '\n' + // 2 chars heigth (larger area to click)
             `{${this.activeColor}-fg}${this.activeChar.repeat(activeLength)}` + 
             `{${this.inactiveColor}-fg}${this.inactiveChar.repeat(inactiveLength)}`;

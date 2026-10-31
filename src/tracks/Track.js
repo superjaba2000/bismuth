@@ -23,6 +23,15 @@ export default class Track{
         return this.loaded ? (this.audioBuffer.duration || this.metadata.duration || 0) : 0;
     }
 
+    toLogDetails() {
+        return {
+            title: this.title,
+            artist: this.artist,
+            duration: Number.isFinite(this.duration) ? Number(this.duration.toFixed(2)) : null,
+            loaded: this.loaded
+        };
+    }
+
     async load(loader, audioContext) {
         if (!loader || !audioContext) {
             throw new Error('AudioLoader and AudioContext are required to load a track');

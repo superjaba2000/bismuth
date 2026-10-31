@@ -58,8 +58,6 @@ export default class UIManager{
     }
 
     render() {
-        logger.debug('[UI] render')
-
         this.tabManager.prerender();
         this.playerBox.prerender();
 

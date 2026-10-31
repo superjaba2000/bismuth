@@ -42,7 +42,10 @@ export default class FilesTab extends UITab {
                 this.updatePlaylist();
                 this.emit('message', `Playing: ${track.title}`, 2);
             } catch (error) {
-                logger.error(`Failed to play selected file "${filePath}":`, error);
+                logger.errorWithContext(`Failed to play selected file "${filePath}"`, error, {
+                    state: state.getDiagnostics(),
+                    audio: app.as.getDiagnostics()
+                });
                 this.emit('message', `Could not play file: ${error.message}`, 5);
             }
         });

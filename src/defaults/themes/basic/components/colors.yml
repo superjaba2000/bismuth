@@ -13,6 +13,6 @@ colors:
   background: "black"
   alert-border: "magenta"
   welcome-logo: "blue"
-  playlist-selected-bg: "#1fab00"
+  playlist-selected-bg: "#1f1f00"
   file-selected-bg: "#bcbcbc"
   selected-fg: "black"
