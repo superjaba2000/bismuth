@@ -11,7 +11,7 @@ const DEFAULTS_DIRS = [
     path.resolve(MODULE_DIR, '../src/defaults')
 ];
 
-export const IS_DEV = process.env.NODE_ENV !== 'production';
+export const IS_DEV = process.env.NODE_ENV === 'development';
 
 export default class Environment {
     static get IS_DEV() {

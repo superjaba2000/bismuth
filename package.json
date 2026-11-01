@@ -4,17 +4,19 @@
   "author": "superjaba2000",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
-    "start": "node src/app.js",
-    "debug": "NODE_ENV=development FORCE_CONSOLE_LOGS=true node src/app.js",
+    "start": "cross-env NODE_ENV=development node src/app.js",
+    "debug": "cross-env NODE_ENV=development FORCE_CONSOLE_LOGS=true node src/app.js",
     "prebuild": "webpack --mode production",
-    "build": "pkg . -t node16-windows-x64"
+    "build": "pkg . -t node24-win-x64"
   },
   "bin": "dist/bundle.cjs",
   "pkg": {
     "scripts": "dist/bundle.cjs",
     "assets": [
-      "ui-options/**/*",
       "src/defaults/**/*",
       "node_modules/reblessed/dist/lib/widgets/*.js",
       "node_modules/**/*"
@@ -23,16 +25,17 @@
   "dependencies": {
     "@descript/web-audio-js": "^0.15.3-patched.6",
     "ffmpeg-static": "^5.3.0",
-    "json5": "^2.2.3",
     "reblessed": "^0.2.1",
     "speaker": "^0.5.5",
     "winston": "^3.19.0",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@yao-pkg/pkg": "^6.24.0",
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "babel-loader": "^10.0.0",
+    "cross-env": "^10.1.0",
     "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1",
     "webpack-node-externals": "^3.0.0"

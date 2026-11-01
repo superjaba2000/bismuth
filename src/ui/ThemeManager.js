@@ -118,8 +118,11 @@ export default class ThemeManager {
                 throw new Error('Theme config must define a non-empty theme.name');
             }
 
-            const basedOn = config?.['based-on'] ?? config?.theme?.['based-on'];
-            if (basedOn !== undefined && (typeof basedOn !== 'string' || basedOn.length === 0)) {
+            const parentThemeName = config?.['based-on'] ?? config?.theme?.['based-on'];
+            if (
+                parentThemeName !== undefined
+                && (typeof parentThemeName !== 'string' || parentThemeName.length === 0)
+            ) {
                 throw new Error('"based-on" must be a non-empty theme name');
             }
 
@@ -140,7 +143,7 @@ export default class ThemeManager {
                 }
             }
 
-            return { name, basedOn, config, components };
+            return { name, parentThemeName, config, components };
         } catch (error) {
             logger.error(`Failed to read or parse theme ${themeDir}: ${error.message}`);
             return null;
@@ -162,9 +165,9 @@ export default class ThemeManager {
         }
 
         let components = {};
-        if (theme.basedOn) {
+        if (theme.parentThemeName) {
             const parent = this.resolveTheme(
-                theme.basedOn,
+                theme.parentThemeName,
                 rawThemes,
                 resolvedThemes,
                 [...resolving, themeName]

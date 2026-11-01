@@ -1,6 +1,6 @@
 # !!! Do not modify the default theme.
 # Create your own and override only the values you need.
-# In theme.yml of your theme, specify "basedOn" as "basic"
+# In your theme.yml, use "based-on: basic" to inherit these defaults.
 
 # Welcome screen logo, separator, and keyboard hint.
 tab0-logo-box:
