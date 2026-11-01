@@ -1,9 +1,7 @@
 /node_modules
 
-docs/
 logs/
 bismuth-logs/
-src/bismuth-logs/
 
 src/filemanager.js
 

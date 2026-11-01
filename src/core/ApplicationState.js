@@ -19,7 +19,7 @@ export default class ApplicationState extends EventEmitter {
         this.set("repeat-type", 'none');
         this.set("shuffle", false);
 
-        this.set("active-tab", config.get("show-welcome-screen") ? "welcome" : "files");
+        this.set("active-tab", config.get("show-welcome-screen") ? "welcome" : "playlist");
         this.set("current-theme", config.get("theme"));
     }
 

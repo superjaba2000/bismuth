@@ -1,0 +1,68 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In your theme.yml, use "based-on: basic" to inherit these defaults.
+
+tab-playlist-info-panel:
+  top: 1
+  left: 1
+  width: "35%-2"
+  height: "100%-5"
+  #border:
+  #  type: "line"
+  style:
+    fg: "colors:highlight-fg"
+    border:
+      fg: "colors:neutral-gray"
+tab-playlist-track-title:
+  top: 3
+  left: 3
+  width: "35%-6"
+  height: 1
+  style:
+    fg: "colors:primary-fg"
+    bold: true
+tab-playlist-track-artist:
+  top: 5
+  left: 3
+  width: "35%-6"
+  height: 1
+  style:
+    fg: "colors:secondary-fg"
+tab-playlist-separator:
+  orientation: "vertical"
+  top: 1
+  left: "35%"
+  min-x: "25%"
+  max-x: "75%"
+  drag-tolerance: 1
+  height: "100%-5"
+  draggable: true
+  style:
+    fg: "colors:neutral-gray"
+tab-playlist-header:
+  top: 1
+  left: "35%+2"
+  width: "65%-3"
+  height: 2
+  align: "center"
+  content: "{center}current playlist{/center}"
+  tags: true
+  style:
+    fg: "colors:highlight-fg"
+tab-playlist-list:
+  top: 4
+  left: "35%+2"
+  width: "65%-3"
+  height: "100%-8"
+  keys: {}
+  vi: false
+  mouse: true
+  style:
+    item:
+      fg: "colors:primary-fg"
+    selected:
+      bg: "colors:playlist-selected-bg"
+      fg: "colors:selected-fg"
+
+basic-track-prefix: "  "
+current-track-prefix: "> "

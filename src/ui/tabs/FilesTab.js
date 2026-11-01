@@ -1,6 +1,7 @@
 import blessed from 'reblessed';
 import logger from '../../util/logger.js';
-import { clamp, screenSize } from '../../util/util.js';
+import { screenSize } from '../../util/util.js';
+import DraggableSeparator from '../elements/DraggableSeparator.js';
 import { app, screen, state } from '../../app.js';
 import UITab from './UITab.js';
 
@@ -15,17 +16,11 @@ import UITab from './UITab.js';
 export default class FilesTab extends UITab {
     name = 'files';
 
-    separatorY = 1;
-    separatorActive = false;
-
     init(styles) { 
         logger.debug('[FilesTab] Initializing...');
 
-        const separator = blessed.line(styles['tab1-separator']);
         const playlist =  blessed.list(styles['tab1-playlist']);
         const playlistHeader = blessed.box(styles['tab1-playlist-header']);
-
-        this.separatorY = styles['tab1-separator'].top;
 
         const fileManager = blessed.filemanager(styles['tab1-filemanager']);
 
@@ -56,34 +51,14 @@ export default class FilesTab extends UITab {
             }
         });
 
-        this.addChild('separator', separator);
+        const separator = this.addChild('separator', new DraggableSeparator('tab1-separator', screen));
+        separator.on('drag', () => {
+            this.resize();
+        });
         this.addChild('playlist', playlist);
         this.addChild('playlist-header', playlistHeader);
         this.addChild('filemanager', fileManager);
         this.updatePlaylist();
-
-        screen.on('mouse', e => {
-            if (!this.isActive) return;
-
-            const separator = this.getChild('separator').e;
-            const eventOnSeparator = e.x === separator.aleft
-                && e.y >= separator.top
-                && e.y < separator.top + separator.height;
-
-            if (e.action === 'mousedown' && e.button === 'left' && eventOnSeparator) {
-                if (!this.separatorActive) {
-                    separator.style.fg = 'white';
-                    this.separatorActive = true;
-                }
-
-                this.resize();
-                this.emit('needs-rerender');
-            } else if (e.action === 'mouseup' && e.button === 'left' && this.separatorActive) {
-                separator.style.fg = 'gray';
-                this.separatorActive = false;
-                this.emit('needs-rerender');
-            }
-        });
 
         super.init(styles);
         logger.debug('[FilesTab] initialized');
@@ -101,13 +76,12 @@ export default class FilesTab extends UITab {
     }
 
     resize() {
-        const s = this.getChild('separator').e;
+        const separator = this.getChild('separator');
+        separator.clampX();
+        const s = separator.e;
         const p = this.getChild('playlist').e;
         const ph = this.getChild('playlist-header').e;
         const fm = this.getChild('filemanager').e;
-
-        s.left = clamp(s.left, 23, screenSize().width - 20);
-        s.top = this.separatorY;
 
         p.width = s.left - 2;
         ph.width = p.width;

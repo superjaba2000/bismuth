@@ -33,10 +33,13 @@ tab1-separator:
   orientation: "vertical"
   top: 1
   left: 30
+  min-x: "29%"
+  max-x: "75%"
+  drag-tolerance: 1
   height: "100%-5"
+  draggable: true
   style:
     fg: "colors:neutral-gray"
-  draggable: true
 tab1-filemanager:
   top: 1
   left: 32
