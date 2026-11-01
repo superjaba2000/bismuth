@@ -1,0 +1,53 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In your theme.yml, use "based-on: basic" to inherit these defaults.
+
+# Playlist heading and list.
+tab1-playlist-header:
+  top: 1
+  left: 1
+  width: 20
+  height: 2
+  align: "center"
+  content: "{center}current playlist{/center}\n{gray-fg}⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─⁠─"
+  tags: true
+  style:
+    fg: "colors:highlight-fg"
+tab1-playlist:
+  top: 4
+  left: 1
+  width: 20
+  keys: {}
+  vi: false
+  mouse: true
+  height: "100%-8"
+  style:
+    item:
+      fg: "colors:primary-fg"
+    selected:
+      bg: "colors:playlist-selected-bg"
+      fg: "colors:selected-fg"
+
+# Divider and file browser.
+tab1-separator:
+  orientation: "vertical"
+  top: 1
+  left: 30
+  height: "100%-5"
+  style:
+    fg: "colors:neutral-gray"
+  draggable: true
+tab1-filemanager:
+  top: 1
+  left: 32
+  width: "shrink"
+  keys: {}
+  vi: false
+  mouse: true
+  height: "100%-5"
+  style:
+    item:
+      fg: "colors:primary-fg"
+    selected:
+      bg: "colors:file-selected-bg"
+      fg: "colors:selected-fg"

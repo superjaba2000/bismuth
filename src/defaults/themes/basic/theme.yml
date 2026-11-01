@@ -1,0 +1,8 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In your theme.yml, use "based-on: basic" to inherit these defaults.
+
+theme:
+  name: basic
+  description: basic bismuth theme
+  autor: superjaba

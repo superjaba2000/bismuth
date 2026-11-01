@@ -1,18 +1,14 @@
-import { get_track_metadata } from "../audio/audio-metadata.js";
-import { load_wav, load_with_decode } from "../audio/audio-loader.js";
-
-export default class Track {
-    path;
-
+export default class Track{
+    path = null;
     metadata = {};
-    audio_buffer = null;
+    audioBuffer = null;
 
     constructor(path) {
         this.path = path;
     }
 
     get loaded() {
-        return this.audio_buffer !== null;
+        return this.audioBuffer !== null;
     }
 
     get title() {
@@ -24,16 +20,23 @@ export default class Track {
     }
 
     get duration() {
-        return this.loaded ? (this.metadata.duration || this.audio_buffer.duration || 3599 /* -> 59:59 */) : 0;
+        return this.loaded ? (this.audioBuffer.duration || this.metadata.duration || 0) : 0;
     }
 
-    async load() {
-        this.metadata = await get_track_metadata(this.path);
+    toLogDetails() {
+        return {
+            title: this.title,
+            artist: this.artist,
+            duration: Number.isFinite(this.duration) ? Number(this.duration.toFixed(2)) : null,
+            loaded: this.loaded
+        };
+    }
 
-        if (this.metadata.ext === '.wav') {
-            this.audio_buffer = await load_wav(this.path);
-        } else {
-            this.audio_buffer = await load_with_decode(this.path);
+    async load(loader, audioContext) {
+        if (!loader || !audioContext) {
+            throw new Error('AudioLoader and AudioContext are required to load a track');
         }
+
+        return loader.load(this, audioContext);
     }
 }

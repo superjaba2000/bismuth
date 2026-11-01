@@ -4,6 +4,7 @@ import winston from 'winston';
 import { tmpdir } from 'os';
 
 const FORCE_CONSOLE_LOGS = process.env.FORCE_CONSOLE_LOGS === 'true' || false;
+const SEPARATE_LOGS = process.env.SEPARATE_LOGS === 'true' || false;
 
 const getLogsDir = () => {
     try {
@@ -47,18 +48,28 @@ const getLogsDir = () => {
 
 const logs_dir = getLogsDir();
 const base_log_file_name = path.join(logs_dir, 'bismuth');
-
+const exception_log_file_name = SEPARATE_LOGS ? path.join(logs_dir, 'bismuth-exceptions') : base_log_file_name;
+const rejection_log_file_name = SEPARATE_LOGS ? path.join(logs_dir, 'bismuth-rejections') : base_log_file_name;
 
 let logger;
 
+function errorWithContext(message, error, context = {}) {
+    const errorDetails = error instanceof Error
+        ? error.stack ?? `${error.name}: ${error.message}`
+        : String(error);
+    const contextDetails = JSON.stringify(context, null, 2);
+
+    logger.error(`${message}\n${errorDetails}\nContext: ${contextDetails}`);
+}
+
 try {
     logger = winston.createLogger({
-        level: "info",
+        level: "debug",
 
         format: winston.format.combine(
             winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
             winston.format.printf(({ timestamp, level, message }) => {
-                return `[${timestamp}] [${level.toUpperCase()}]: ${message}`;
+                return `[${timestamp}] ${`[${level.toUpperCase()}]:`.padEnd(8)} ${message}`;
             })
         ),
 
@@ -82,25 +93,28 @@ try {
         });
         
         logger.add(fileTransport);
+
+        logger.exceptions.handle(fileTransport);
+        logger.rejections.handle(fileTransport);
         
         // errors and rejections handlers
-        logger.exceptions.handle(
-            new winston.transports.File({ filename: base_log_file_name + '-exceptions.log' })
-        );
+        // logger.exceptions.handle(
+        //     SEPARATE_LOGS ? new winston.transports.File({ filename: exception_log_file_name + '.log' }) : fileTransport
+        // );
         
-        logger.rejections.handle(
-            new winston.transports.File({ filename: base_log_file_name + '-rejections.log' })
-        );
+        // logger.rejections.handle(
+        //     SEPARATE_LOGS ? new winston.transports.File({ filename: rejection_log_file_name + '.log' }) : fileTransport
+        // );
         
     } catch (fileError) {
         logger.warn(`Error adding file transport: ${fileError.message}`);
     }
     
-    logger.info('-------------------------------------')
+    logger.info('-------------------------------------\n');
     logger.info('Logger initialized');
     
 } catch (error) {
-    // Fallback: простой console логгер
+    // Fallback: simple console logger
     console.error('Error initializing logger: ', error);
 
     logger = {
@@ -111,6 +125,10 @@ try {
     };
 
     logger.info('Using fallback logger (console)');
+}
+
+if (typeof logger.errorWithContext !== 'function') {
+    logger.errorWithContext = errorWithContext;
 }
 
 export default logger;

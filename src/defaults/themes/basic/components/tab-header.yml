@@ -1,0 +1,16 @@
+# !!! Do not modify the default theme.
+# Create your own and override only the values you need.
+# In your theme.yml, use "based-on: basic" to inherit these defaults.
+
+tab-header:
+  top: -3
+  left: "50%-13"
+  width: 25
+  height: 3
+  align: "center"
+  tags: true
+  border:
+    type: "line"
+    fg: "colors:primary-fg"
+  style:
+    fg: "colors:success-fg"
