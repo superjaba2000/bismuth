@@ -20,6 +20,7 @@
 
 - `src/ui/UIManager.js` и `src/ui/TabManager.js` — инициализация интерфейса и управление вкладками.
 - `src/ui/ThemeManager.js` — загрузка YAML-тем и наследование компонентов.
-- `src/ui/tabs/` — вкладки Welcome, Files и Config. Вкладка Config пока является заглушкой.
-- `src/ui/elements/` — элементы интерфейса, включая плеер, заголовок вкладок и сообщение.
+- `src/ui/tabs/` — вкладки Welcome, Playlist, Files и Config. Вкладка Config пока является заглушкой.
+- `src/ui/tabs/PlaylistTab.js` — список плейлиста и информация о выделенном треке.
+- `src/ui/elements/` — элементы интерфейса, включая PlaylistElement, DraggableSeparator, плеер, заголовок вкладок и сообщение.
 - `src/util/` — логирование, цвета и вспомогательные функции.

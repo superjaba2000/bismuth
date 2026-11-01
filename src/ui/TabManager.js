@@ -1,5 +1,6 @@
 import { state } from '../app.js';
 import WelcomeTab from './tabs/WelcomeTab.js';
+import PlaylistTab from './tabs/PlaylistTab.js';
 import FilesTab from './tabs/FilesTab.js';
 import ConfigTab from './tabs/ConfigTab.js';
 import TabHeader from './elements/TabHeader.js';
@@ -10,6 +11,7 @@ export default class TabManager extends UIElement {
     constructor() {
         super();
         this.addChild('welcome', new WelcomeTab());
+        this.addChild('playlist', new PlaylistTab());
         this.addChild('files', new FilesTab());
         this.addChild('config', new ConfigTab());
         this.addChild('header', new TabHeader());
